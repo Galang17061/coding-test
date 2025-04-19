@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+    # ─── PHP / Laravel ────────────────────────────────────────────────
+    app:
+        build:
+            context: .
+        image: laravel-vue-ecom_app
+        container_name: app
+        restart: unless-stopped
+        env_file:
+            - .env
+        depends_on:
+            - db
+        volumes:
+            # map your project into the container for live code edit
+            - ./:/var/www/html:delegated
+            # persist Composer & npm modules for PHP side
+            - node_modules:/var/www/html/node_modules
+        ports:
+            - "9000:9000"
+
+    # ─── Nginx front‐end proxy ─────────────────────────────────────────
+    web:
+        image: nginx:stable-alpine
+        container_name: web
+        restart: unless-stopped
+        ports:
+            - "80:80"
+        volumes:
+            # serve the same project folder, read‑only
+            - ./:/var/www/html:ro
+            # your Nginx vhost configs
+            - ./nginx/conf.d:/etc/nginx/conf.d:ro
+        depends_on:
+            - app
+
+    # ─── MySQL database ────────────────────────────────────────────────
+    db:
+        image: mysql:8.0
+        container_name: db
+        restart: unless-stopped
+        environment:
+            MYSQL_ROOT_PASSWORD: secret
+            MYSQL_DATABASE:  laravel
+            MYSQL_USER:      laravel
+            MYSQL_PASSWORD:  secret
+        volumes:
+            - dbdata:/var/lib/mysql
+
+    # ─── MailHog (SMTP + web UI) ───────────────────────────────────────
+    mailhog:
+        image: mailhog/mailhog:latest
+        container_name: mailhog
+        restart: unless-stopped
+        ports:
+            - "1025:1025"  # SMTP
+            - "8025:8025"  # Web UI
+
+    # ─── Vite Dev Server for Vue Admin ─────────────────────────────────
+    frontend:
+        image: node:18-alpine
+        container_name: vite_dev
+        working_dir: /var/www/html/backend
+        volumes:
+            # mount your entire project
+            - ./:/var/www/html:delegated
+            # persist npm modules inside Docker
+            - frontend_node_modules:/var/www/html/backend/node_modules
+        ports:
+            - "3000:3000"
+        environment:
+            CHOKIDAR_USEPOLLING: "true"
+        command: >
+            sh -c "cd backend &&
+                   npm ci &&
+                   npm run dev -- --host 0.0.0.0 --port 3000"
+        depends_on:
+            - app
+
+volumes:
+    dbdata:
+    node_modules:
+    frontend_node_modules:
