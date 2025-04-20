@@ -18,6 +18,10 @@ return new class extends Migration
             $table->foreignIdFor(\App\Models\User::class, 'user_id');
             $table->foreignId('product_id')->references('id')->on('products');
             $table->integer('quantity');
+            $table->uuid()->default(Str::uuid()->toString())->unique();
+            $table->timestamp('recorded_at')->default(DB::raw('CURRENT_TIMESTAMP'));
+            $table->boolean('is_active')->default(true);
+            $table->json('meta')->nullable();
             $table->timestamps();
         });
     }

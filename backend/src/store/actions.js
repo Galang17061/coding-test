@@ -94,6 +94,12 @@ export function createProduct({commit}, product) {
   return axiosClient.post('/products', product)
 }
 
+export function excelImport({commit}, file) {
+  const form = new FormData();
+  form.append('file', file);
+  return axiosClient.post('/excel/import', form)
+}
+
 export function updateProduct({commit}, product) {
   const id = product.id
   if (product.images && product.images.length) {

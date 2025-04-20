@@ -13,14 +13,12 @@ services:
         depends_on:
             - db
         volumes:
-            # map your project into the container for live code edit
             - ./:/var/www/html:delegated
-            # persist Composer & npm modules for PHP side
             - node_modules:/var/www/html/node_modules
         ports:
             - "9000:9000"
 
-    # ─── Nginx front‐end proxy ─────────────────────────────────────────
+    # ─── Nginx front‑end proxy ────────────────────────────────────────
     web:
         image: nginx:stable-alpine
         container_name: web
@@ -28,9 +26,7 @@ services:
         ports:
             - "80:80"
         volumes:
-            # serve the same project folder, read‑only
             - ./:/var/www/html:ro
-            # your Nginx vhost configs
             - ./nginx/conf.d:/etc/nginx/conf.d:ro
         depends_on:
             - app
@@ -54,8 +50,8 @@ services:
         container_name: mailhog
         restart: unless-stopped
         ports:
-            - "1025:1025"  # SMTP
-            - "8025:8025"  # Web UI
+            - "1025:1025"
+            - "8025:8025"
 
     # ─── Vite Dev Server for Vue Admin ─────────────────────────────────
     frontend:
@@ -63,17 +59,14 @@ services:
         container_name: vite_dev
         working_dir: /var/www/html/backend
         volumes:
-            # mount your entire project
             - ./:/var/www/html:delegated
-            # persist npm modules inside Docker
             - frontend_node_modules:/var/www/html/backend/node_modules
         ports:
             - "3000:3000"
         environment:
             CHOKIDAR_USEPOLLING: "true"
         command: >
-            sh -c "cd backend &&
-                   npm ci &&
+            sh -c "npm ci &&
                    npm run dev -- --host 0.0.0.0 --port 3000"
         depends_on:
             - app

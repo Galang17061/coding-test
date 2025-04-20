@@ -17,6 +17,10 @@ return new class extends Migration
             $table->string('code', 3)->primary();
             $table->string('name', 255);
             $table->jsonb('states')->nullable();
+            $table->uuid()->default(Str::uuid()->toString())->unique();
+            $table->timestamp('recorded_at')->default(DB::raw('CURRENT_TIMESTAMP'));
+            $table->boolean('is_active')->default(true);
+            $table->json('meta')->nullable();
         });
     }
 

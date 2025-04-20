@@ -17,6 +17,7 @@ import OrdersReport from "../views/Reports/OrdersReport.vue";
 import CustomersReport from "../views/Reports/CustomersReport.vue";
 import ProductForm from "../views/Products/ProductForm.vue";
 import Categories from "../views/Categories/Categories.vue";
+import Imports from "../views/Imports/Imports.vue";
 
 const routes = [
   {
@@ -46,6 +47,11 @@ const routes = [
         path: 'categories',
         name: 'app.categories',
         component: Categories
+      },
+      {
+        path: 'excel/import',
+        name: 'app.excel.import',
+        component: Imports
       },
       {
         path: 'products/create',
