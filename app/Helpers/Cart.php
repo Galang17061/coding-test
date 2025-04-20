@@ -1,9 +1,4 @@
 <?php
-/**
- * User: Zura
- * Date: 8/16/2022
- * Time: 5:26 AM
- */
 
 namespace App\Helpers;
 
@@ -17,7 +12,6 @@ use Illuminate\Support\Str;
 /**
  * Class Cart
  *
- * @author  Zura Sekhniashvili <zurasekhniashvili@gmail.com>
  * @package App\Helpers
  */
 class Cart
@@ -105,7 +99,6 @@ class Cart
     /**
      *
      * @return \Illuminate\Database\Eloquent\Builder[]|\Illuminate\Database\Eloquent\Collection
-     * @author Zura Sekhniashvili <zurasekhniashvili@gmail.com>
      */
     public static function getProductsAndCartItems(): array|\Illuminate\Database\Eloquent\Collection
     {

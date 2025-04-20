@@ -7,6 +7,7 @@ use App\Http\Requests\ProductRequest;
 use App\Http\Resources\ProductListResource;
 use App\Http\Resources\ProductResource;
 use App\Models\Api\Product;
+use App\Models\AuditLog;
 use App\Models\ProductCategory;
 use App\Models\ProductImage;
 use Illuminate\Http\Request;
@@ -129,14 +130,28 @@ class ProductController extends Controller
      * @param UploadedFile[] $images
      * @return string
      * @throws \Exception
-     * @author Zura Sekhniashvili <zurasekhniashvili@gmail.com>
      */
     private function saveImages($images, $positions, Product $product)
     {
         foreach ($positions as $id => $position) {
-            ProductImage::query()
+            $productImage = ProductImage::query()
                 ->where('id', $id)
-                ->update(['position' => $position]);
+                ->first();
+
+            $oldProductImage = $productImage;
+            $productImage->update(['position' => $position]);
+
+            AuditLog::create([
+                'id' => Str::uuid(),
+                'table_name' => 'product_images',
+                'record_id' => $oldProductImage->id,
+                'action' => 'updated',
+                'old_values' => json_encode($oldProductImage->toArray()),
+                'new_values' => json_encode($productImage->toArray()),
+                'user_id' => auth()->id(),
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->header('User-Agent'),
+            ]);
         }
 
         foreach ($images as $id => $image) {
@@ -150,13 +165,24 @@ class ProductController extends Controller
             }
             $relativePath = $path . '/' . $name;
 
-            ProductImage::create([
+            $productImage = ProductImage::create([
                 'product_id' => $product->id,
                 'path' => $relativePath,
                 'url' => URL::to(Storage::url($relativePath)),
                 'mime' => $image->getClientMimeType(),
                 'size' => $image->getSize(),
                 'position' => $positions[$id] ?? $id + 1
+            ]);
+
+            AuditLog::create([
+                'id' => Str::uuid(),
+                'table_name' => 'product_images',
+                'record_id' => $productImage->id,
+                'action' => 'created',
+                'new_values' => json_encode($productImage->toArray()),
+                'user_id' => auth()->id(),
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->header('User-Agent'),
             ]);
         }
     }
@@ -174,6 +200,17 @@ class ProductController extends Controller
                 Storage::deleteDirectory('/public/' . dirname($image->path));
             }
             $image->delete();
+
+            AuditLog::create([
+                'id' => Str::uuid(),
+                'table_name' => 'product_images',
+                'record_id' => $image->id,
+                'action' => 'deleted',
+                'new_values' => json_encode($image->toArray()),
+                'user_id' => auth()->id(),
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->header('User-Agent'),
+            ]);
         }
     }
 }
