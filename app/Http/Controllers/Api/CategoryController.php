@@ -7,7 +7,9 @@ use App\Http\Requests\StoreCategoryRequest;
 use App\Http\Requests\UpdateCategoryRequest;
 use App\Http\Resources\CategoryResource;
 use App\Http\Resources\CategoryTreeResource;
+use App\Models\AuditLog;
 use App\Models\Category;
+use Illuminate\Support\Str;
 
 class CategoryController extends Controller
 {
@@ -42,6 +44,17 @@ class CategoryController extends Controller
         $data['updated_by'] = $request->user()->id;
         $category = Category::create($data);
 
+        AuditLog::create([
+            'id' => Str::uuid(),
+            'table_name' => 'categories',
+            'record_id' => $category->id,
+            'action' => 'created',
+            'new_values' => json_encode($category->toArray()),
+            'user_id' => auth()->id(),
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->header('User-Agent'),
+        ]);
+
         return new CategoryResource($category);
     }
 
@@ -52,7 +65,20 @@ class CategoryController extends Controller
     {
         $data = $request->validated();
         $data['updated_by'] = $request->user()->id;
+        $oldCategory = $category->toArray();
         $category->update($data);
+
+        AuditLog::create([
+            'id' => Str::uuid(),
+            'table_name' => 'categories',
+            'record_id' => $category->id,
+            'action' => 'updated',
+            'old_values' => $oldCategory,
+            'new_values' => json_encode($category->toArray()),
+            'user_id' => auth()->id(),
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->header('User-Agent'),
+        ]);
 
         return new CategoryResource($category);
     }
@@ -63,6 +89,17 @@ class CategoryController extends Controller
     public function destroy(Category $category)
     {
         $category->delete();
+
+        AuditLog::create([
+            'id' => Str::uuid(),
+            'table_name' => 'categories',
+            'record_id' => $category->id,
+            'action' => 'deleted',
+            'new_values' => json_encode($category->toArray()),
+            'user_id' => auth()->id(),
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->header('User-Agent'),
+        ]);
 
         return response()->noContent();
     }

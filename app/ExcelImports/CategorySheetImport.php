@@ -2,6 +2,7 @@
 
 namespace App\ExcelImports;
 
+use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\User;
 use Exception;
@@ -44,7 +45,7 @@ class CategorySheetImport implements ToCollection, WithHeadingRow, WithValidatio
                 Throw new Exception('Deleted by user not found');
             }
 
-            Category::create([
+            $category = Category::create([
                 'name' => $row['name'],
                 'slug' => Str::slug($row['slug']),
                 'active' => $row['active'],
@@ -55,6 +56,17 @@ class CategorySheetImport implements ToCollection, WithHeadingRow, WithValidatio
                 'updated_at' => now()->format('Y-m-d h:i:s'),
                 'deleted_at' => $row['deleted_at'] ?? null,
                 'deleted_by' => $deletedById,
+            ]);
+
+            AuditLog::create([
+                'id' => Str::uuid(),
+                'table_name' => 'categories',
+                'record_id' => $category->id,
+                'action' => 'created',
+                'new_values' => json_encode($category->toArray()),
+                'user_id' => auth()->id(),
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->header('User-Agent'),
             ]);
         }
     }
