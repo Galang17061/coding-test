@@ -2,9 +2,11 @@
 
 namespace App\ExcelImports;
 
+use App\Models\AuditLog;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\SkipsErrors;
 use Maatwebsite\Excel\Concerns\SkipsFailures;
 use Maatwebsite\Excel\Concerns\SkipsOnError;
@@ -21,7 +23,7 @@ class OrderSheetImport implements ToCollection, WithHeadingRow, WithValidation, 
     public function collection(Collection $rows)
     {
         foreach ($rows as $row) {
-            Order::create([
+            $order = Order::create([
                 'id' => $row['order_id'],
                 'total_price' => $row['total_price'],
                 'status' => $row['status_paid'],
@@ -29,6 +31,17 @@ class OrderSheetImport implements ToCollection, WithHeadingRow, WithValidation, 
                 'created_at' => now()->format('Y-m-d h:i:s'),
                 'updated_by' => $this->userId($row['updated_by']),
                 'updated_at' => now()->format('Y-m-d h:i:s'),
+            ]);
+
+            AuditLog::create([
+                'id' => Str::uuid(),
+                'table_name' => 'orders',
+                'record_id' => $order->id,
+                'action' => 'deleted',
+                'new_values' => json_encode($order->toArray()),
+                'user_id' => auth()->id(),
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->header('User-Agent'),
             ]);
         }
     }
