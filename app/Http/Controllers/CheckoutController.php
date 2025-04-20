@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use App\Models\AuditLog;
+use Illuminate\Support\Str;
 
 class CheckoutController extends Controller
 {
@@ -72,13 +74,23 @@ class CheckoutController extends Controller
             ];
 
             if ($product->quantity !== null) {
+                $oldProduct = $product;
                 $product->quantity -= $quantity;
                 $product->save();
+
+                AuditLog::create([
+                    'id' => Str::uuid(),
+                    'table_name' => 'products',
+                    'record_id' => $product->id,
+                    'action' => 'updated',
+                    'old_values' => $oldProduct,
+                    'new_values' => $product,
+                    'user_id' => $user->id,
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->header('User-Agent'),
+                ]);
             }
         }
-//        dd(route('checkout.failure', [], true));
-
-//        dd(route('checkout.success', [], true) . '?session_id={CHECKOUT_SESSION_ID}');
 
         $session = \Stripe\Checkout\Session::create([
             'line_items' => $lineItems,
@@ -99,10 +111,32 @@ class CheckoutController extends Controller
             ];
             $order = Order::create($orderData);
 
+            AuditLog::create([
+                'id' => Str::uuid(),
+                'table_name' => 'orders',
+                'record_id' => $order->id,
+                'action' => 'created',
+                'new_values' => json_encode($order->toArray()),
+                'user_id' => $user->id,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->header('User-Agent'),
+            ]);
+
             // Create Order Items
             foreach ($orderItems as $orderItem) {
                 $orderItem['order_id'] = $order->id;
-                OrderItem::create($orderItem);
+                $createdOrderItem = OrderItem::create($orderItem);
+
+                AuditLog::create([
+                    'id' => Str::uuid(),
+                    'table_name' => 'order_items',
+                    'record_id' => $createdOrderItem->id,
+                    'action' => 'created',
+                    'new_values' => json_encode($createdOrderItem->toArray()),
+                    'user_id' => $user->id,
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->header('User-Agent'),
+                ]);
             }
 
             // Create Payment
@@ -115,7 +149,18 @@ class CheckoutController extends Controller
                 'updated_by' => $user->id,
                 'session_id' => $session->id
             ];
-            Payment::create($paymentData);
+            $payment = Payment::create($paymentData);
+
+            AuditLog::create([
+                'id' => Str::uuid(),
+                'table_name' => 'payments',
+                'record_id' => $payment->id,
+                'action' => 'created',
+                'new_values' => json_encode($payment->toArray()),
+                'user_id' => $user->id,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->header('User-Agent'),
+            ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -125,7 +170,19 @@ class CheckoutController extends Controller
         }
 
         DB::commit();
-        CartItem::where(['user_id' => $user->id])->delete();
+        $cartItem = CartItem::where(['user_id' => $user->id]);
+        $cartItem->delete();
+
+        AuditLog::create([
+            'id' => Str::uuid(),
+            'table_name' => 'cart_items',
+            'record_id' => $cartItem->id,
+            'action' => 'deleted',
+            'new_values' => json_encode($cartItem->toArray()),
+            'user_id' => auth()->id(),
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->header('User-Agent'),
+        ]);
 
         return redirect($session->url);
     }
@@ -179,7 +236,6 @@ class CheckoutController extends Controller
                     'currency' => 'usd',
                     'product_data' => [
                         'name' => $item->product->title,
-//                        'images' => [$product->image]
                     ],
                     'unit_amount' => $item->unit_price * 100,
                 ],
@@ -194,9 +250,21 @@ class CheckoutController extends Controller
             'cancel_url' => route('checkout.failure', [], true),
         ]);
 
+        $oldPaymentValue = $order->payment->toArray();
         $order->payment->session_id = $session->id;
         $order->payment->save();
 
+        AuditLog::create([
+            'id' => Str::uuid(),
+            'table_name' => 'payments',
+            'record_id' => $order->payment->id,
+            'action' => 'updated',
+            'old_values' => $oldPaymentValue,
+            'new_values' => json_encode($order->payment->toArray()),
+            'user_id' => auth()->id(),
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->header('User-Agent'),
+        ]);
 
         return redirect($session->url);
     }
@@ -247,13 +315,39 @@ class CheckoutController extends Controller
     {
         DB::beginTransaction();
         try {
+            $oldPayment = $payment->toArray();
             $payment->status = PaymentStatus::Paid->value;
             $payment->update();
 
+            AuditLog::create([
+                'id' => Str::uuid(),
+                'table_name' => 'payments',
+                'record_id' => $payment->id,
+                'action' => 'updated',
+                'old_values' => $oldPayment,
+                'new_values' => json_encode($payment->toArray()),
+                'user_id' => auth()->id(),
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->header('User-Agent'),
+            ]);
+
             $order = $payment->order;
 
+            $oldOrder = $order;
             $order->status = OrderStatus::Paid->value;
             $order->update();
+
+            AuditLog::create([
+                'id' => Str::uuid(),
+                'table_name' => 'orders',
+                'record_id' => $order->id,
+                'action' => 'updated',
+                'old_values' => $oldOrder->toArray(),
+                'new_values' => json_encode($order->toArray()),
+                'user_id' => auth()->id(),
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->header('User-Agent'),
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::critical(__METHOD__ . ' method does not work. '. $e->getMessage());
