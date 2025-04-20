@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Cart;
+use App\Models\AuditLog;
 use App\Models\CartItem;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Str;
 
 class CartController extends Controller
 {
@@ -66,15 +68,39 @@ class CartController extends Controller
             $cartItem = CartItem::where(['user_id' => $user->id, 'product_id' => $product->id])->first();
 
             if ($cartItem) {
+                $oldValues = $cartItem->toArray();
                 $cartItem->quantity += $quantity;
                 $cartItem->update();
+
+                AuditLog::create([
+                    'id' => Str::uuid(),
+                    'table_name' => 'cart_items',
+                    'record_id' => $cartItem->id,
+                    'action' => 'updated',
+                    'old_values' => json_encode($oldValues),
+                    'new_values' => json_encode($cartItem->toArray()),
+                    'user_id' => auth()->id(),
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->header('User-Agent'),
+                ]);
             } else {
                 $data = [
                     'user_id' => $request->user()->id,
                     'product_id' => $product->id,
                     'quantity' => $quantity,
                 ];
-                CartItem::create($data);
+                $cartItem = CartItem::create($data);
+
+                AuditLog::create([
+                    'id' => Str::uuid(),
+                    'table_name' => 'cart_items',
+                    'record_id' => $cartItem->id,
+                    'action' => 'created',
+                    'new_values' => json_encode($cartItem->toArray()),
+                    'user_id' => auth()->id(),
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->header('User-Agent'),
+                ]);
             }
 
             return response([
@@ -110,24 +136,36 @@ class CartController extends Controller
         if ($user) {
             $cartItem = CartItem::query()->where(['user_id' => $user->id, 'product_id' => $product->id])->first();
             if ($cartItem) {
+                $oldValues = $cartItem->toArray();
                 $cartItem->delete();
+
+                AuditLog::create([
+                    'id' => Str::uuid(),
+                    'table_name' => 'cart_items',
+                    'record_id' => $cartItem->id,
+                    'action' => 'deleted',
+                    'old_values' => json_encode($oldValues),
+                    'user_id' => $user->id,
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->header('User-Agent'),
+                ]);
             }
 
             return response([
                 'count' => Cart::getCartItemsCount(),
             ]);
-        } else {
-            $cartItems = json_decode($request->cookie('cart_items', '[]'), true);
-            foreach ($cartItems as $i => &$item) {
-                if ($item['product_id'] === $product->id) {
-                    array_splice($cartItems, $i, 1);
-                    break;
-                }
-            }
-            Cookie::queue('cart_items', json_encode($cartItems), 60 * 24 * 30);
-
-            return response(['count' => Cart::getCountFromItems($cartItems)]);
         }
+
+        $cartItems = json_decode($request->cookie('cart_items', '[]'), true);
+        foreach ($cartItems as $i => &$item) {
+            if ($item['product_id'] === $product->id) {
+                array_splice($cartItems, $i, 1);
+                break;
+            }
+        }
+        Cookie::queue('cart_items', json_encode($cartItems), 60 * 24 * 30);
+
+        return response(['count' => Cart::getCountFromItems($cartItems)]);
     }
 
     public function updateQuantity(Request $request, Product $product)
@@ -146,22 +184,39 @@ class CartController extends Controller
         }
 
         if ($user) {
-            CartItem::where(['user_id' => $request->user()->id, 'product_id' => $product->id])->update(['quantity' => $quantity]);
+            $cartItem = CartItem::where(['user_id' => $user->id, 'product_id' => $product->id])->first();
+            if ($cartItem) {
+                $oldValues = $cartItem->toArray();
+                $cartItem->quantity = $quantity;
+                $cartItem->save();
+
+                AuditLog::create([
+                    'id' => Str::uuid(),
+                    'table_name' => 'cart_items',
+                    'record_id' => $cartItem->id,
+                    'action' => 'updated',
+                    'old_values' => json_encode($oldValues),
+                    'new_values' => json_encode($cartItem->toArray()),
+                    'user_id' => $user->id,
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->header('User-Agent'),
+                ]);
+            }
 
             return response([
                 'count' => Cart::getCartItemsCount(),
             ]);
-        } else {
-            $cartItems = json_decode($request->cookie('cart_items', '[]'), true);
-            foreach ($cartItems as &$item) {
-                if ($item['product_id'] === $product->id) {
-                    $item['quantity'] = $quantity;
-                    break;
-                }
-            }
-            Cookie::queue('cart_items', json_encode($cartItems), 60 * 24 * 30);
-
-            return response(['count' => Cart::getCountFromItems($cartItems)]);
         }
+
+        $cartItems = json_decode($request->cookie('cart_items', '[]'), true);
+        foreach ($cartItems as &$item) {
+            if ($item['product_id'] === $product->id) {
+                $item['quantity'] = $quantity;
+                break;
+            }
+        }
+        Cookie::queue('cart_items', json_encode($cartItems), 60 * 24 * 30);
+
+        return response(['count' => Cart::getCountFromItems($cartItems)]);
     }
 }

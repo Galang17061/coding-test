@@ -8,9 +8,11 @@
 namespace App\Helpers;
 
 
+use App\Models\AuditLog;
 use App\Models\CartItem;
 use App\Models\Product;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 
 /**
  * Class Cart
@@ -83,7 +85,20 @@ class Cart
         }
 
         if (!empty($newCartItems)) {
-            CartItem::insert($newCartItems);
+            foreach ($newCartItems as $newCartItem) {
+                $cartItem = CartItem::create($newCartItem);
+
+                AuditLog::create([
+                    'id' => Str::uuid(),
+                    'table_name' => 'cart_items',
+                    'record_id' => $cartItem->id,
+                    'action' => 'created',
+                    'new_values' => json_encode($cartItem->toArray()),
+                    'user_id' => auth()->id(),
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->header('User-Agent'),
+                ]);
+            }
         }
     }
 
