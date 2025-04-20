@@ -9,12 +9,13 @@ use App\Http\Requests\CustomerRequest;
 use App\Http\Resources\CountryResource;
 use App\Http\Resources\CustomerListResource;
 use App\Http\Resources\CustomerResource;
+use App\Models\AuditLog;
 use App\Models\Country;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
-use http\Env\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class CustomerController extends Controller
 {
@@ -74,14 +75,38 @@ class CustomerController extends Controller
 
         DB::beginTransaction();
         try {
+            $oldCustomer = $customer;
             $customer->update($customerData);
+
+            AuditLog::create([
+                'id' => Str::uuid(),
+                'table_name' => 'customer',
+                'record_id' => $customer->user_id,
+                'action' => 'updated',
+                'old_values' => $oldCustomer->toArray(),
+                'new_values' => json_encode($customer->toArray()),
+                'user_id' => auth()->id(),
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->header('User-Agent'),
+            ]);
 
             if ($customer->shippingAddress) {
                 $customer->shippingAddress->update($shippingData);
             } else {
                 $shippingData['customer_id'] = $customer->user_id;
                 $shippingData['type'] = AddressType::Shipping->value;
-                CustomerAddress::create($shippingData);
+                $customerAddress = CustomerAddress::create($shippingData);
+
+                AuditLog::create([
+                    'id' => Str::uuid(),
+                    'table_name' => 'customer_addresses',
+                    'record_id' => $customerAddress->id,
+                    'action' => 'created',
+                    'new_values' => json_encode($customerAddress->toArray()),
+                    'user_id' => auth()->id(),
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->header('User-Agent'),
+                ]);
             }
 
             if ($customer->billingAddress) {
@@ -89,7 +114,17 @@ class CustomerController extends Controller
             } else {
                 $billingData['customer_id'] = $customer->user_id;
                 $billingData['type'] = AddressType::Billing->value;
-                CustomerAddress::create($billingData);
+                $customerAddress = CustomerAddress::create($billingData);
+                AuditLog::create([
+                    'id' => Str::uuid(),
+                    'table_name' => 'customer_addresses',
+                    'record_id' => $customerAddress->id,
+                    'action' => 'created',
+                    'new_values' => json_encode($customerAddress->toArray()),
+                    'user_id' => auth()->id(),
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->header('User-Agent'),
+                ]);
             }
         } catch (\Exception $e) {
             DB::rollBack();
@@ -112,6 +147,17 @@ class CustomerController extends Controller
     public function destroy(Customer $customer)
     {
         $customer->delete();
+
+        AuditLog::create([
+            'id' => Str::uuid(),
+            'table_name' => 'customer_addresses',
+            'record_id' => $customer->user_id,
+            'action' => 'created',
+            'new_values' => json_encode($customer->toArray()),
+            'user_id' => auth()->id(),
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->header('User-Agent'),
+        ]);
 
         return response()->noContent();
     }

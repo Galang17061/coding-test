@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Helpers\Cart;
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Customer;
 use App\Models\User;
 use App\Providers\RouteServiceProvider;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 
 class RegisteredUserController extends Controller
@@ -58,6 +60,17 @@ class RegisteredUserController extends Controller
             $customer->first_name = $names[0];
             $customer->last_name = $names[1] ?? '';
             $customer->save();
+
+            AuditLog::create([
+                'id' => Str::uuid(),
+                'table_name' => 'customer',
+                'record_id' => $customer->user_id,
+                'action' => 'created',
+                'new_values' => json_encode($customer->toArray()),
+                'user_id' => auth()->id(),
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->header('User-Agent'),
+            ]);
 
             Auth::login($user);
         } catch (\Exception $e) {
