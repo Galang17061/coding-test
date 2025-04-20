@@ -11,6 +11,7 @@ class RouteServiceProvider extends ServiceProvider
      * This is where your “home” route redirects.
      */
 
+    public const HOME = '/';
     public function boot(): void
     {
         $this->routes(function () {
