@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Enums\AddressType;
 use App\Http\Requests\PasswordUpdateRequest;
 use App\Http\Requests\ProfileRequest;
+use App\Models\AuditLog;
 use App\Models\Country;
 use App\Models\CustomerAddress;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class ProfileController extends Controller
 {
@@ -40,21 +42,77 @@ class ProfileController extends Controller
 
         DB::beginTransaction();
         try {
+            $oldCustomer = $customer;
             $customer->update($customerData);
+            AuditLog::create([
+                'id' => Str::uuid(),
+                'table_name' => 'customers',
+                'record_id' => $customer->user_id,
+                'action' => 'updated',
+                'old_values' => $oldCustomer->toArray(),
+                'new_values' => json_encode($customer->toArray()),
+                'user_id' => auth()->id(),
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->header('User-Agent'),
+            ]);
 
             if ($customer->shippingAddress) {
+                $oldCustomer = $customer;
                 $customer->shippingAddress->update($shippingData);
+                AuditLog::create([
+                    'id' => Str::uuid(),
+                    'table_name' => 'customers',
+                    'record_id' => $customer->user_id,
+                    'action' => 'updated',
+                    'old_values' => $oldCustomer->toArray(),
+                    'new_values' => json_encode($customer->toArray()),
+                    'user_id' => auth()->id(),
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->header('User-Agent'),
+                ]);
             } else {
                 $shippingData['customer_id'] = $customer->user_id;
                 $shippingData['type'] = AddressType::Shipping->value;
-                CustomerAddress::create($shippingData);
+                $customerAddress = CustomerAddress::create($shippingData);
+                AuditLog::create([
+                    'id' => Str::uuid(),
+                    'table_name' => 'customer_addresses',
+                    'record_id' => $customerAddress->id,
+                    'action' => 'created',
+                    'new_values' => json_encode($customerAddress->toArray()),
+                    'user_id' => auth()->id(),
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->header('User-Agent'),
+                ]);
             }
             if ($customer->billingAddress) {
+                $oldCustomer = $customer;
                 $customer->billingAddress->update($billingData);
+                AuditLog::create([
+                    'id' => Str::uuid(),
+                    'table_name' => 'customers',
+                    'record_id' => $customer->user_id,
+                    'action' => 'updated',
+                    'old_values' => $oldCustomer->toArray(),
+                    'new_values' => json_encode($customer->billingAddress->toArray()),
+                    'user_id' => auth()->id(),
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->header('User-Agent'),
+                ]);
             } else {
                 $billingData['customer_id'] = $customer->user_id;
                 $billingData['type'] = AddressType::Billing->value;
-                CustomerAddress::create($billingData);
+                $customerAddress = CustomerAddress::create($billingData);
+                AuditLog::create([
+                    'id' => Str::uuid(),
+                    'table_name' => 'customer_addresses',
+                    'record_id' => $customerAddress->id,
+                    'action' => 'created',
+                    'new_values' => json_encode($customerAddress->toArray()),
+                    'user_id' => auth()->id(),
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->header('User-Agent'),
+                ]);
             }
         } catch (\Exception $e) {
             DB::rollBack();
