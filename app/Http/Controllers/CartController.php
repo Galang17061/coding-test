@@ -88,6 +88,7 @@ class CartController extends Controller
                     'user_id' => $request->user()->id,
                     'product_id' => $product->id,
                     'quantity' => $quantity,
+                    'uuid' => Str::uuid(),
                 ];
                 $cartItem = CartItem::create($data);
 

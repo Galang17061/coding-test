@@ -51,6 +51,7 @@ class UserController extends Controller
         $data['created_by'] = $request->user()->id;
         $data['updated_by'] = $request->user()->id;
 
+        $data['uuid'] = Str::uuid();
         $user = User::create($data);
 
         return new UserResource($user);

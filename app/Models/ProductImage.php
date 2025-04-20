@@ -16,6 +16,7 @@ class ProductImage extends Model
         'mime',
         'size',
         'position',
+        'uuid'
     ];
 
     public function product()

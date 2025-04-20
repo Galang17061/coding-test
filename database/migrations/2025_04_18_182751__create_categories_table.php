@@ -21,7 +21,7 @@ return new class extends Migration
             $table->foreignIdFor(\App\Models\User::class, 'updated_by');
             $table->timestamp('deleted_at')->nullable();
             $table->foreignIdFor(\App\Models\User::class, 'deleted_by')->nullable();
-            $table->uuid()->default(Str::uuid()->toString())->unique();
+            $table->uuid()->unique();
             $table->timestamp('recorded_at')->default(DB::raw('CURRENT_TIMESTAMP'));
             $table->boolean('is_active')->default(true);
             $table->json('meta')->nullable();

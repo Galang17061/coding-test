@@ -31,6 +31,7 @@ class OrderSheetImport implements ToCollection, WithHeadingRow, WithValidation, 
                 'created_at' => now()->format('Y-m-d h:i:s'),
                 'updated_by' => $this->userId($row['updated_by']),
                 'updated_at' => now()->format('Y-m-d h:i:s'),
+                'uuid' => Str::uuid(),
             ]);
 
             AuditLog::create([

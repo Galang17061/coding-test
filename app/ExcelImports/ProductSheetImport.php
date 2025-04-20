@@ -55,6 +55,7 @@ class ProductSheetImport implements ToCollection, WithHeadingRow, WithValidation
                 'updated_at' => now()->format('Y-m-d h:i:s'),
                 'deleted_at' => $row['deleted_at'] ?? null,
                 'deleted_by' => $deletedById,
+                'uuid' => Str::uuid()
             ]);
 
             AuditLog::create([
@@ -72,6 +73,7 @@ class ProductSheetImport implements ToCollection, WithHeadingRow, WithValidation
                 $productCategory = ProductCategory::create([
                     'category_id' => $categoryId,
                     'product_id' => $product->id,
+                    'uuid' => Str::uuid()
                 ]);
 
                 AuditLog::create([

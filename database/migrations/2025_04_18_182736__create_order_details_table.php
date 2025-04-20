@@ -24,7 +24,7 @@ return new class extends Migration
             $table->string('state', 45)->nullable();
             $table->string('zipcode', 45);
             $table->string('country_code', 3);
-            $table->uuid()->default(Str::uuid()->toString())->unique();
+            $table->uuid()->unique();
             $table->timestamp('recorded_at')->default(DB::raw('CURRENT_TIMESTAMP'));
             $table->boolean('is_active')->default(true);
             $table->json('meta')->nullable();

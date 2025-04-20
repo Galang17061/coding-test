@@ -41,6 +41,7 @@ class OrderItemSheetImport implements ToCollection, WithHeadingRow, WithValidati
                 'unit_price' => $unitPrice,
                 'created_at' => now()->format('Y-m-d h:i:s'),
                 'updated_at' => now()->format('Y-m-d h:i:s'),
+                'uuid' => Str::uuid()
             ]);
 
             AuditLog::create([

@@ -42,6 +42,7 @@ class CategoryController extends Controller
         $data = $request->validated();
         $data['created_by'] = $request->user()->id;
         $data['updated_by'] = $request->user()->id;
+        $data['uuid'] = Str::uuid();
         $category = Category::create($data);
 
         AuditLog::create([
@@ -73,7 +74,7 @@ class CategoryController extends Controller
             'table_name' => 'categories',
             'record_id' => $category->id,
             'action' => 'updated',
-            'old_values' => $oldCategory,
+            'old_values' => json_encode($oldCategory),
             'new_values' => json_encode($category->toArray()),
             'user_id' => auth()->id(),
             'ip_address' => request()->ip(),

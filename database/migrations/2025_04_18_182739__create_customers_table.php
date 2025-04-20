@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('last_name');
             $table->string('phone')->nullable();
             $table->string('status', 45)->nullable();
-            $table->uuid()->default(Str::uuid()->toString())->unique();
+            $table->uuid()->unique();
             $table->timestamp('recorded_at')->default(DB::raw('CURRENT_TIMESTAMP'));
             $table->boolean('is_active')->default(true);
             $table->json('meta')->nullable();

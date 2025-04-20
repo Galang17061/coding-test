@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\ExcelImportController;
 use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
@@ -50,6 +51,11 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/report/customers', [ReportController::class, 'customers']);
 
     Route::post('/excel/import', [ExcelImportController::class, 'import'])->name('categories.import');
+
+    // routes/api.php
+
+    Route::get('/audit-logs', [AuditLogController::class, 'index']);
+    Route::get('/audit-logs/tables', [AuditLogController::class, 'tables']);
 });
 
 Route::post('/login', [\App\Http\Controllers\Api\AuthController::class, 'login']);

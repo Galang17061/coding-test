@@ -25,7 +25,7 @@ return new class extends Migration
             $table->foreignId('customer_id')->references('id')->on('customers');
             $table->timestamps();
             $table->foreign('country_code')->references('code')->on('countries');
-            $table->uuid()->default(Str::uuid()->toString())->unique();
+            $table->uuid()->unique();
             $table->timestamp('recorded_at')->default(DB::raw('CURRENT_TIMESTAMP'));
             $table->boolean('is_active')->default(true);
             $table->json('meta')->nullable();

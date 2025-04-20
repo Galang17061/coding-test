@@ -22,7 +22,7 @@ return new class extends Migration
             $table->rememberToken();
             $table->timestamps();
 
-            $table->uuid()->default(Str::uuid()->toString())->unique();
+            $table->uuid()->unique();
             $table->timestamp('recorded_at')->default(DB::raw('CURRENT_TIMESTAMP'));
             $table->boolean('is_active')->default(true);
             $table->json('meta')->nullable();

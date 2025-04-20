@@ -43,6 +43,16 @@ export default {
     limit: null,
     total: null
   },
+  logs: {
+    loading: false,
+    data: [],
+    links: [],
+    from: null,
+    to: null,
+    page: 1,
+    limit: null,
+    total: null
+  },
   countries: [],
   orders: {
     loading: false,

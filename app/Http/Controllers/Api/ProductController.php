@@ -12,6 +12,7 @@ use App\Models\ProductCategory;
 use App\Models\ProductImage;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -55,6 +56,7 @@ class ProductController extends Controller
         $imagePositions = $data['image_positions'] ?? [];
         $categories = $data['categories'] ?? [];
 
+        $data['uuid'] = Str::uuid();
         $product = Product::create($data);
 
         $this->saveCategories($categories, $product);
@@ -119,9 +121,25 @@ class ProductController extends Controller
     private function saveCategories($categoryIds, Product $product)
     {
         ProductCategory::where('product_id', $product->id)->delete();
-        $data = array_map(fn($id) => (['category_id' => $id, 'product_id' => $product->id]), $categoryIds);
+        $data = array_map(fn($id) => (['category_id' => $id, 'product_id' => $product->id, 'uuid' => Str::uuid()]), $categoryIds);
 
         ProductCategory::insert($data);
+
+        $id = ProductCategory::query()
+            ->where($data)
+            ->first()
+            ->id;
+
+        AuditLog::create([
+            'id' => Str::uuid(),
+            'table_name' => 'products',
+            'record_id' => $id,
+            'action' => 'created',
+            'new_values' => json_encode($data),
+            'user_id' => auth()->id(),
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->header('User-Agent'),
+        ]);
     }
 
     /**
@@ -171,7 +189,8 @@ class ProductController extends Controller
                 'url' => URL::to(Storage::url($relativePath)),
                 'mime' => $image->getClientMimeType(),
                 'size' => $image->getSize(),
-                'position' => $positions[$id] ?? $id + 1
+                'position' => $positions[$id] ?? $id + 1,
+                'uuid' => Str::uuid()
             ]);
 
             AuditLog::create([

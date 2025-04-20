@@ -83,8 +83,8 @@ class CheckoutController extends Controller
                     'table_name' => 'products',
                     'record_id' => $product->id,
                     'action' => 'updated',
-                    'old_values' => $oldProduct,
-                    'new_values' => $product,
+                    'old_values' => json_encode($oldProduct),
+                    'new_values' => json_encode($product),
                     'user_id' => $user->id,
                     'ip_address' => $request->ip(),
                     'user_agent' => $request->header('User-Agent'),
@@ -108,6 +108,7 @@ class CheckoutController extends Controller
                 'status' => OrderStatus::Unpaid,
                 'created_by' => $user->id,
                 'updated_by' => $user->id,
+                'uuid' => Str::uuid()
             ];
             $order = Order::create($orderData);
 
@@ -125,6 +126,7 @@ class CheckoutController extends Controller
             // Create Order Items
             foreach ($orderItems as $orderItem) {
                 $orderItem['order_id'] = $order->id;
+                $orderItem['uuid'] = Str::uuid();
                 $createdOrderItem = OrderItem::create($orderItem);
 
                 AuditLog::create([
@@ -147,7 +149,8 @@ class CheckoutController extends Controller
                 'type' => 'cc',
                 'created_by' => $user->id,
                 'updated_by' => $user->id,
-                'session_id' => $session->id
+                'session_id' => $session->id,
+                'uuid' => Str::uuid()
             ];
             $payment = Payment::create($paymentData);
 
@@ -170,7 +173,7 @@ class CheckoutController extends Controller
         }
 
         DB::commit();
-        $cartItem = CartItem::where(['user_id' => $user->id]);
+        $cartItem = CartItem::where(['user_id' => $user->id])->first();
         $cartItem->delete();
 
         AuditLog::create([
@@ -259,7 +262,7 @@ class CheckoutController extends Controller
             'table_name' => 'payments',
             'record_id' => $order->payment->id,
             'action' => 'updated',
-            'old_values' => $oldPaymentValue,
+            'old_values' => json_encode($oldPaymentValue),
             'new_values' => json_encode($order->payment->toArray()),
             'user_id' => auth()->id(),
             'ip_address' => $request->ip(),
@@ -324,7 +327,7 @@ class CheckoutController extends Controller
                 'table_name' => 'payments',
                 'record_id' => $payment->id,
                 'action' => 'updated',
-                'old_values' => $oldPayment,
+                'old_values' => json_encode($oldPayment),
                 'new_values' => json_encode($payment->toArray()),
                 'user_id' => auth()->id(),
                 'ip_address' => request()->ip(),
@@ -342,7 +345,7 @@ class CheckoutController extends Controller
                 'table_name' => 'orders',
                 'record_id' => $order->id,
                 'action' => 'updated',
-                'old_values' => $oldOrder->toArray(),
+                'old_values' => json_encode($oldOrder->toArray()),
                 'new_values' => json_encode($order->toArray()),
                 'user_id' => auth()->id(),
                 'ip_address' => request()->ip(),

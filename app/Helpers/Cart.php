@@ -80,6 +80,7 @@ class Cart
 
         if (!empty($newCartItems)) {
             foreach ($newCartItems as $newCartItem) {
+                $newCartItem['uuid'] = Str::uuid();
                 $cartItem = CartItem::create($newCartItem);
 
                 AuditLog::create([

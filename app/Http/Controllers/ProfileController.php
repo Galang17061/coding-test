@@ -49,7 +49,7 @@ class ProfileController extends Controller
                 'table_name' => 'customers',
                 'record_id' => $customer->user_id,
                 'action' => 'updated',
-                'old_values' => $oldCustomer->toArray(),
+                'old_values' => json_encode($oldCustomer->toArray()),
                 'new_values' => json_encode($customer->toArray()),
                 'user_id' => auth()->id(),
                 'ip_address' => $request->ip(),
@@ -64,7 +64,7 @@ class ProfileController extends Controller
                     'table_name' => 'customers',
                     'record_id' => $customer->user_id,
                     'action' => 'updated',
-                    'old_values' => $oldCustomer->toArray(),
+                    'old_values' => json_encode($oldCustomer->toArray()),
                     'new_values' => json_encode($customer->toArray()),
                     'user_id' => auth()->id(),
                     'ip_address' => $request->ip(),
@@ -73,6 +73,7 @@ class ProfileController extends Controller
             } else {
                 $shippingData['customer_id'] = $customer->user_id;
                 $shippingData['type'] = AddressType::Shipping->value;
+                $shippingData['uuid'] = Str::uuid();
                 $customerAddress = CustomerAddress::create($shippingData);
                 AuditLog::create([
                     'id' => Str::uuid(),
@@ -93,7 +94,7 @@ class ProfileController extends Controller
                     'table_name' => 'customers',
                     'record_id' => $customer->user_id,
                     'action' => 'updated',
-                    'old_values' => $oldCustomer->toArray(),
+                    'old_values' => json_encode($oldCustomer->toArray()),
                     'new_values' => json_encode($customer->billingAddress->toArray()),
                     'user_id' => auth()->id(),
                     'ip_address' => $request->ip(),
@@ -102,6 +103,7 @@ class ProfileController extends Controller
             } else {
                 $billingData['customer_id'] = $customer->user_id;
                 $billingData['type'] = AddressType::Billing->value;
+                $billingData['uuid'] = Str::uuid();
                 $customerAddress = CustomerAddress::create($billingData);
                 AuditLog::create([
                     'id' => Str::uuid(),

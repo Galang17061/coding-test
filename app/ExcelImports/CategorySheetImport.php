@@ -56,6 +56,7 @@ class CategorySheetImport implements ToCollection, WithHeadingRow, WithValidatio
                 'updated_at' => now()->format('Y-m-d h:i:s'),
                 'deleted_at' => $row['deleted_at'] ?? null,
                 'deleted_by' => $deletedById,
+                'uuid' => Str::uuid()
             ]);
 
             AuditLog::create([
