@@ -2,11 +2,13 @@
 
 namespace App\ExcelImports;
 
+use App\Models\AuditLog;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\User;
 use Exception;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\SkipsErrors;
 use Maatwebsite\Excel\Concerns\SkipsFailures;
 use Maatwebsite\Excel\Concerns\SkipsOnError;
@@ -32,13 +34,24 @@ class OrderItemSheetImport implements ToCollection, WithHeadingRow, WithValidati
                 Throw new Exception('Product not found');
             }
 
-            OrderItem::create([
+            $orderItem = OrderItem::create([
                 'order_id' => $orderId,
                 'product_id' => $productId,
                 'quantity' => $quantity,
                 'unit_price' => $unitPrice,
                 'created_at' => now()->format('Y-m-d h:i:s'),
                 'updated_at' => now()->format('Y-m-d h:i:s'),
+            ]);
+
+            AuditLog::create([
+                'id' => Str::uuid(),
+                'table_name' => 'order_items',
+                'record_id' => $orderItem->id,
+                'action' => 'created',
+                'new_values' => json_encode($orderItem->toArray()),
+                'user_id' => auth()->id(),
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->header('User-Agent'),
             ]);
         }
     }
