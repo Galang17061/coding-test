@@ -35,6 +35,8 @@
             <th class="border px-4 py-2 text-left">Date</th>
             <th class="border px-4 py-2 text-left">Table</th>
             <th class="border px-4 py-2 text-left">Action</th>
+            <th class="border px-4 py-2 text-left">Old Value</th>
+            <th class="border px-4 py-2 text-left">New Value</th>
             <th class="border px-4 py-2 text-left">User</th>
             <th class="border px-4 py-2 text-left">Record ID</th>
           </tr>
@@ -44,6 +46,16 @@
             <td class="border px-4 py-2">{{ log.created_at }}</td>
             <td class="border px-4 py-2">{{ log.table_name }}</td>
             <td class="border px-4 py-2 capitalize">{{ log.action }}</td>
+            <td class="border px-4 py-2">
+              <pre class="json-block text-left" @click="toggle(log, 'old')">
+                {{ formatJson(log, 'old') }}
+              </pre>
+                        </td>
+                        <td class="border px-4 py-2">
+              <pre class="json-block text-left" @click="toggle(log, 'old')">
+                {{ formatJson(log, 'new') }}
+              </pre>
+            </td>
             <td class="border px-4 py-2">{{ log.user_id ?? 'Guest' }}</td>
             <td class="border px-4 py-2">{{ log.record_id }}</td>
           </tr>
@@ -63,6 +75,39 @@ const tableOptions = ref([])
 const selectedTable = ref('')
 const selectedAction = ref('')
 const loading = ref(false)
+const expandedLogs = ref({})
+
+const toggle = (log, type) => {
+  const key = `${log.id}-${type}`
+  expandedLogs.value[key] = !expandedLogs.value[key]
+}
+
+const formatJson = (log, type) => {
+  const key = `${log.id}-${type}`
+  let raw = type === 'old' ? log.old_values : log.new_values
+
+  if (!raw) return '(empty)'
+
+  let data
+  try {
+    data = typeof raw === 'string' ? JSON.parse(raw) : raw
+  } catch (e) {
+    return raw // fallback to raw if invalid JSON
+  }
+
+  if (!data || typeof data !== 'object') return '(invalid)'
+
+  if (expandedLogs.value[key]) {
+    return JSON.stringify(data, null, 2)
+  }
+
+  const preview = Object.entries(data)
+    .slice(0, 3)
+    .map(([k, v]) => `${k}: ${typeof v === 'object' ? '[object]' : v}`)
+    .join(', ')
+
+  return preview + (Object.keys(data).length > 3 ? ', ...' : '')
+}
 
 const fetchLogs = async () => {
   loading.value = true
@@ -112,5 +157,19 @@ onMounted(() => {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.json-block {
+  background: #f8f8f8;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0.5rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: Consolas, monospace;
+  font-size: 13px;
+  cursor: pointer;
+  max-height: 150px;
+  overflow-y: auto;
 }
 </style>
